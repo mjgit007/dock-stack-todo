@@ -80,13 +80,4 @@ docker build -t getting-started-todo-app:latest .
 **Note**: The Dockerfile uses cache mounts (`--mount=type=cache`). These are supported by the default Docker builder in modern versions (using BuildKit), so no special flags are usually required. If you encounter issues, enable BuildKit: `DOCKER_BUILDKIT=1 docker build ...`.
 
 
-## License
 
-**Apache License 2.0**
-
-*   Original work Copyright 2024 Docker, Inc.
-*   Modifications Copyright 2026 [Manjunatha Shetty]
-
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0).
-
-See the [LICENSE](LICENSE) file for details.
