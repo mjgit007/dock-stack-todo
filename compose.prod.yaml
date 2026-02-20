@@ -1,0 +1,32 @@
+services:
+  app:
+    build:
+      context: .
+      target: final
+    image: node-todo-app:v3
+    ports:
+      - 82:3000
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: secret
+      MYSQL_DB: todos
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:9.3
+    volumes:
+      - todo-mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: todos
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  todo-mysql-data:

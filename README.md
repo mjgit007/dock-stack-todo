@@ -50,6 +50,36 @@ When you're done, simply remove the containers by running the following command:
 docker compose down
 ```
 
+## Building the Image (Production)
+
+This project supports both traditional Docker builds and advanced builds using Docker Buildx and Bake.
+
+### Option 1: Modern Build (Recommended)
+Using **Docker Buildx Bake** allows for parallel builds, advanced caching, and multi-platform support (when configured).
+
+1.  **Ensure Buildx is enabled**:
+    ```bash
+    docker buildx version
+    ```
+2.  **Build using Bake**:
+    ```bash
+    # Build for the current architecture (dev/local use)
+    docker buildx bake app
+    
+    # Print the build configuration (dry run)
+    docker buildx bake --print
+    ```
+
+### Option 2: Traditional Build
+You can still build the image using the standard Docker command.
+
+```bash
+docker build -t getting-started-todo-app:latest .
+```
+
+**Note**: The Dockerfile uses cache mounts (`--mount=type=cache`). These are supported by the default Docker builder in modern versions (using BuildKit), so no special flags are usually required. If you encounter issues, enable BuildKit: `DOCKER_BUILDKIT=1 docker build ...`.
+
+
 ## License
 
 **Apache License 2.0**

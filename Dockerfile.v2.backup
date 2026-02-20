@@ -1,9 +1,9 @@
 ###################################################
 # Stage: base
 ###################################################
-# Use Debian Slim for build to match Distroless (glibc)
-FROM node:22-bookworm-slim AS base
+FROM node:22-alpine AS base
 WORKDIR /usr/local/app
+# No common dependencies to install here for Alpine meta-stage
 
 ################## CLIENT STAGES ##################
 
@@ -12,7 +12,7 @@ WORKDIR /usr/local/app
 ###################################################
 FROM base AS client-base
 COPY client/package.json client/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm install
+RUN npm install && npm cache clean --force
 COPY client/.eslintrc.cjs client/index.html client/vite.config.js ./
 COPY client/public ./public
 COPY client/src ./src
@@ -37,12 +37,10 @@ RUN npm run build
 # Stage: backend-base
 ###################################################
 FROM base AS backend-dev
-# Install build tools for native modules (sqlite3/mysql) on Debian
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+# Install build tools required for native modules (sqlite3/mysql) on Alpine
+RUN apk add --no-cache python3 make g++ py3-setuptools
 COPY backend/package.json backend/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm install && npm cache clean --force
+RUN npm install && npm cache clean --force
 COPY backend/spec ./spec
 COPY backend/src ./src
 CMD ["npm", "run", "dev"]
@@ -54,35 +52,22 @@ FROM backend-dev AS test
 RUN npm run test
 
 ###################################################
-# Stage: build-prod
-###################################################
-# Intermediate stage to install prod dependencies
-FROM base AS build-prod
-WORKDIR /usr/local/app
-COPY --from=test /usr/local/app/package.json /usr/local/app/package-lock.json ./
-# Install build tools again for prod deps
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
-RUN --mount=type=cache,target=/root/.npm npm ci --only=production
-
-###################################################
 # Stage: final
 ###################################################
-# Distroless Runtime
-FROM gcr.io/distroless/nodejs22-debian12 AS final
+FROM base AS final
 ENV NODE_ENV=production
-WORKDIR /usr/local/app
+# Copy package files from test stage (ensures tests passed)
+COPY --from=test /usr/local/app/package.json /usr/local/app/package-lock.json ./
 
-# Copy prod dependencies
-COPY --from=build-prod /usr/local/app/node_modules ./node_modules
-# Copy app source
+# Install ONLY production dependencies
+# We need build tools for native modules (sqlite3/mysql) even in production install
+RUN apk add --no-cache --virtual .build-deps python3 make g++ py3-setuptools && \
+    npm ci --only=production && \
+    npm cache clean --force && \
+    apk del .build-deps
+
 COPY backend/src ./src
-# Copy built frontend
 COPY --from=client-build /usr/local/app/dist ./src/static
 
-# Run as non-root user (distroless provides 'nonroot' user with uid 65532)
-USER nonroot
-
 EXPOSE 3000
-CMD ["src/index.js"]
+CMD ["node", "src/index.js"]

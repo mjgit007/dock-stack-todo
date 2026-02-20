@@ -12,7 +12,7 @@ WORKDIR /usr/local/app
 ###################################################
 FROM base AS client-base
 COPY client/package.json client/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm install
+RUN npm install && npm cache clean --force
 COPY client/.eslintrc.cjs client/index.html client/vite.config.js ./
 COPY client/public ./public
 COPY client/src ./src
@@ -38,11 +38,9 @@ RUN npm run build
 ###################################################
 FROM base AS backend-dev
 # Install build tools for native modules (sqlite3/mysql) on Debian
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY backend/package.json backend/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm install && npm cache clean --force
+RUN npm install && npm cache clean --force
 COPY backend/spec ./spec
 COPY backend/src ./src
 CMD ["npm", "run", "dev"]
@@ -61,10 +59,8 @@ FROM base AS build-prod
 WORKDIR /usr/local/app
 COPY --from=test /usr/local/app/package.json /usr/local/app/package-lock.json ./
 # Install build tools again for prod deps
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
-RUN --mount=type=cache,target=/root/.npm npm ci --only=production
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN npm ci --only=production && npm cache clean --force
 
 ###################################################
 # Stage: final
